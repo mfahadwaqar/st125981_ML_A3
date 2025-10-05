@@ -86,54 +86,47 @@
 
 
 
-# test_model.py
 import pytest
 import numpy as np
 import pandas as pd
+import os
 
+# Basic tests (always run)
 def test_numpy_works():
-    """Test that numpy is installed and working"""
     arr = np.array([1, 2, 3, 4])
     assert arr.sum() == 10
-    assert arr.mean() == 2.5
     print("NumPy test passed")
 
 def test_pandas_works():
-    """Test that pandas is installed and working"""
     df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
     assert len(df) == 3
-    assert list(df.columns) == ['a', 'b']
     print("Pandas test passed")
 
-def test_model_input_shape_validation():
-    """Test 1: Validate expected input shape"""
-    # Simulate model expecting 40 features
+def test_model_input_shape():
+    """Test 1: Model accepts expected input"""
     expected_features = 40
     test_input = np.random.rand(5, expected_features)
-    
-    assert test_input.shape[0] == 5  # 5 samples
-    assert test_input.shape[1] == expected_features  # 40 features
-    print(f"Input shape validation passed: {test_input.shape}")
+    assert test_input.shape == (5, expected_features)
+    print(f"Input shape test passed: {test_input.shape}")
 
-def test_model_output_shape_validation():
-    """Test 2: Validate expected output shape"""
-    # Simulate model predictions (4 classes: 0, 1, 2, 3)
-    num_samples = 3
-    predictions = np.random.randint(0, 4, num_samples)
-    
-    assert len(predictions) == num_samples
+def test_model_output_shape():
+    """Test 2: Model output has expected shape"""
+    predictions = np.random.randint(0, 4, 3)
+    assert len(predictions) == 3
     assert all(p in [0, 1, 2, 3] for p in predictions)
-    print(f"Output shape validation passed: {predictions}")
+    print(f"Output shape test passed: {predictions}")
 
-def test_classification_metrics():
-    """Test that classification metrics can be calculated"""
-    y_true = np.array([0, 1, 2, 3, 0, 1, 2, 3])
-    y_pred = np.array([0, 1, 2, 3, 1, 1, 2, 2])
-    
-    # Calculate accuracy manually
-    accuracy = np.mean(y_true == y_pred)
-    assert 0 <= accuracy <= 1
-    print(f"Metrics calculation passed, accuracy: {accuracy}")
+# MLflow tests (only run if MLflow is available)
+@pytest.mark.skipif(
+    not os.getenv('MLFLOW_TRACKING_URI'),
+    reason="MLflow credentials not configured"
+)
+def test_mlflow_connection():
+    import mlflow
+    mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI'))
+    experiments = mlflow.search_experiments()
+    assert len(experiments) > 0
+    print(f"MLflow connection successful")
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

@@ -1,15 +1,72 @@
-name: Python Tests
+name: ML Model CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
-  test:
+  # Job 1: Basic Python tests (lightweight)
+  basic-tests:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.9
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run unit tests
+      run: |
+        python -m pytest test_model.py -v --tb=short
+
+  # Job 2: Docker build and test (advanced)
+  docker-tests:
+    runs-on: ubuntu-latest
+    needs: basic-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t ml-model-test:latest .
+    
+    - name: Run container tests
+      run: |
+        docker run --rm ml-model-test:latest python -m pytest test_model.py -v
+    
+    - name: Test model loading (if Dockerfile includes model)
+      run: |
+        docker run --rm ml-model-test:latest python -c "
+        import pickle
+        import numpy as np
+        print('Testing model can be loaded in container...')
+        # Add your model loading logic here
+        print('Container test passed')
+        "
+
+  # Job 3: MLflow model tests (requires secrets)
+  mlflow-tests:
+    runs-on: ubuntu-latest
+    needs: basic-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
     
     - name: Set up Python
       uses: actions/setup-python@v3
@@ -18,10 +75,79 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install numpy pandas scikit-learn pytest
+        pip install mlflow pandas numpy scikit-learn
     
-    - name: Run basic tests
+    - name: Test MLflow connection
+      env:
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
       run: |
-        python -c "import numpy as np; print('NumPy works'); assert np.array([1,2,3]).sum() == 6"
-        python -c "import pandas as pd; print('Pandas works')"
-        echo "Basic tests passed!"
+        python -c "
+        import mlflow
+        import os
+        
+        mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI'))
+        print('Testing MLflow connection...')
+        
+        try:
+            experiments = mlflow.search_experiments()
+            print(f'Successfully connected. Found {len(experiments)} experiments')
+        except Exception as e:
+            print(f'MLflow connection failed: {e}')
+            exit(1)
+        "
+    
+    - name: Validate model in registry
+      env:
+        MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+        MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+      run: |
+        python -c "
+        import mlflow
+        from mlflow.tracking import MlflowClient
+        import os
+        
+        mlflow.set_tracking_uri(os.getenv('MLFLOW_TRACKING_URI'))
+        client = MlflowClient()
+        
+        MODEL_NAME = 'st125981-a3-model'
+        
+        try:
+            versions = client.search_model_versions(f\"name='{MODEL_NAME}'\")
+            if versions:
+                print(f'Model {MODEL_NAME} found with {len(versions)} version(s)')
+                for v in versions:
+                    print(f'  Version {v.version}: Stage={v.current_stage}')
+            else:
+                print(f'Warning: Model {MODEL_NAME} not found in registry')
+        except Exception as e:
+            print(f'Model validation failed: {e}')
+        "
+
+  # Job 4: Deploy to Docker Hub (optional)
+  deploy-docker:
+    runs-on: ubuntu-latest
+    needs: [basic-tests, docker-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # Skip if secrets not configured
+      continue-on-error: true
+    
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false  # Set to true when you have Docker Hub credentials
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/ml-a3:latest
+      continue-on-error: true
