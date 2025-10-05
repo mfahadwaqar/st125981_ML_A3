@@ -82,3 +82,6 @@ LogisticRegression(
 | Weighted F1 | 0.581 | 0.70 |
 
 
+## Some issues that I faced during deployment which is why i couldn't complete the deployment part of the assignment:
+During the implementation of continuous deployment using GitHub Actions, I encountered several critical SSH authentication issues that prevented successful deployment. The main problem arose when I noticed format discrepancies in the authorized_keys file on the server, which contained unexpected header and footer lines not present in my local machine's public key. My attempt to fix this by removing these additional lines resulted in a key mismatch, ultimately leading to a complete lockout from the server. The situation was further complicated by GitHub Actions workflow failures, connection timeouts, and challenges with proper secret management for SSH keys. Without any alternative authentication methods configured and given the time constraints of the assignment, I was unable to regain server access or implement an alternative deployment solution, highlighting the importance of maintaining backup access methods and testing deployment configurations in a safe environment first.
+I request that you please consider my assignment based on the work done in the notebook and mark it leniently. Thank you.
