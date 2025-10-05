@@ -164,7 +164,7 @@ jobs:
           PASSPHRASE: ${{ secrets.PASSPHRASE }}
         run: |
           echo "Connecting to remote server..."
-          ssh -o StrictHostKeyChecking=no -i private_key.pem $USERNAME@mlflow.ml.brain.cs.ait.ac.th <<'EOF'
+          ssh -o StrictHostKeyChecking=no -i private_key.pem $USERNAME@ml.brain.cs.ait.ac.th <<'EOF'
           echo "Pulling latest code and rebuilding..."
           cd /home/st125981/app || exit 1
           git pull
