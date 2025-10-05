@@ -108,7 +108,7 @@ jobs:
         with:
           host: ml.brain.cs.ait.ac.th
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }} # PEM private key (includes Proc-Type)
+          key: ${{ secrets.KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
           proxy_host: bazooka.cs.ait.ac.th
           proxy_username: ${{ secrets.USERNAME }}
