@@ -114,7 +114,7 @@ jobs:
           proxy_username: ${{ secrets.USERNAME }}
           proxy_key: ${{ secrets.KEY }}
           proxy_passphrase: ${{ secrets.PASSPHRASE }}
-          source: "docker-compose.yml"
+          source: "docker-compose.yaml"
           target: "st125981/"
           port: 22
           timeout: 30s
